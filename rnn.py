@@ -4,7 +4,7 @@ import collections
 import numpy as np
 from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
-from keras.layers import Activation, Dense, Reshape
+from keras.layers import Activation, Dense
 from keras.layers.recurrent import LSTM
 from keras.layers.embeddings import Embedding
 
@@ -33,7 +33,6 @@ train_y = text[:,1:,:]
 model = Sequential()
 print 'a'
 model.add(LSTM(dim, return_sequences=True, input_dim=dim, input_length=steps))
-model.add(Dense(dim))
 model.add(Activation('tanh'))
 print 'b'
 
