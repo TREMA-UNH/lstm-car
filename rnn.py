@@ -1,46 +1,75 @@
 #!/usr/bin/python
 
+import collections
 import numpy as np
 from keras.models import Sequential
 from keras.preprocessing.text import Tokenizer
-from keras.layers import Activation
+from keras.layers import Activation, Dense, Reshape
 from keras.layers.recurrent import LSTM
 from keras.layers.embeddings import Embedding
 
-steps = 5
+steps = 30
 
-embedding = {}
-for line in open('glove.6B.100d'):
+embeddings = {}
+for line in open('glove.6B.50d.txt'):
     xs = line.split()
-    word = line[0]
+    word = xs[0]
     vec = np.array(map(float, xs[1:]))
-    embedding[word] = vec
+    embeddings[word] = vec
+
+dim = len(embeddings['the'])
 
 tokenizer = Tokenizer()
-text = [ ' '.join(w for w in line.split()[:steps+1]) for line in open('sentences.txt') ]
-tokenizer.fit_on_texts(text)
-lines = tokenizer.texts_to_sequences(text)
-vocab_size = len(tokenizer.word_index)
-
-lines = [line for line in lines if len(line) > steps+1]
-
-train_x = np.zeros([len(lines), steps, vocab_size])
-train_y = np.zeros([len(lines), steps, vocab_size])
-for i, line in enumerate(line for line in lines):
-    for j, word in enumerate(line[:steps]):
-        train_x[i, j, word] = 1
-        train_y[i, j, line[j+1]] = 1
+lines = [ line.split() for line in open('articles')]
+print set(w for w in line for line in lines if w not in embeddings)
+text = [ [ embeddings[w] for w in line if w in embeddings ]
+         for line in lines ]
+text = [np.vstack(line[:steps+1]) for line in text if len(line) > steps+1]
+text = np.dstack(text).swapaxes(1,2).swapaxes(0,1)
+print text.shape
+train_x = text[:,:-1,:]
+train_y = text[:,1:,:]
 
 model = Sequential()
-print vocab_size
 print 'a'
-model.add(LSTM(vocab_size, return_sequences=True, input_dim=vocab_size, input_length=steps))
-model.add(Activation('softmax'))
+model.add(LSTM(dim, return_sequences=True, input_dim=dim, input_length=steps))
+model.add(Dense(dim))
+model.add(Activation('tanh'))
 print 'b'
 
 model.compile(optimizer='rmsprop',
-              loss='categorical_crossentropy'
+              loss='mse'
               )
 
 print 'fitting'
 model.fit(train_x, train_y)
+
+with open('model.json', 'w') as f:
+    f.write(model.to_json())
+model.save_weights('weights.hdf')
+
+print 'preparing word index',
+class WordIndex(object):
+    def __init__(self, words):
+        idx = collections.defaultdict(lambda: [])
+        for k,v in embeddings.items():
+            idx[tuple(x > 0 for x in v[:10])].append((k,v))
+        print 'done'
+        self.word_index = idx
+
+    def get(self, vec):
+        word = None
+        sim = None
+        key = tuple(x > 0 for x in vec[:10])
+        for k,v in self.word_index.get(key, {}):
+            tmp = np.dot(v, vec) / np.linalg.norm(vec) / np.linalg.norm(v)
+            if tmp > sim:
+                word = k
+                sim = tmp
+        return word
+
+idx = WordIndex(embeddings)
+
+print idx.get(embeddings['the'])
+for line in model.predict(train_x):
+    print ' '.join(idx.get(em) for em in line)
