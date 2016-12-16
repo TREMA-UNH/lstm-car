@@ -55,7 +55,7 @@ class BinnedEmbeddingIndex(object):
 def read_paras():
     """ Read text of TREC-CAR paragraphs """
     paras = []
-    for para in read_data.iter_paragraphs(open('release.paragraphs', 'rb')):
+    for para in read_data.iter_paragraphs(open('data/release.paragraphs', 'rb')):
         text = ''
         for body in para.bodies:
             if isinstance(body, read_data.ParaText):
@@ -64,3 +64,7 @@ def read_paras():
                 text += body.anchor_text
         paras.append(nltk.tokenize.word_tokenize(text.lower()))
     return paras
+
+
+def download_nlk_resources():
+    nltk.download()

@@ -22,7 +22,7 @@ def find_nth_word(str, n):
         i = str.find(' ', i+1)
     return i
 
-paras = [ ' '.join(words) for words in read_paras() ]
+paras = [ ' '.join(words) for words in read_paras()[0:1000:20] ]
 #text = open('articles').read().lower()
 vocab = sorted(list(set(c
                         for text in paras
@@ -47,6 +47,7 @@ for line in paras[:10000]:
     comparable_input_sequences.append(line[cut_offset-1-maxlen:cut_offset-1])
     next_chunks.append(line[cut_offset:cut_nextword])
 
+maxlines = len(comparable_input_sequences)
 
 print('nb sequences:', len(input_sequences))
 
@@ -84,41 +85,42 @@ for iteration in range(1, 60):
     print('Iteration', iteration)
     model.fit(train_x, train_y, batch_size=128, nb_epoch=1)
 
-    prefixlen = maxlen
-    def ld_test_predict(model):
-        for row in range(0,maxlines,100):
+    if iteration%10==9:
+        prefixlen = maxlen
+        def ld_test_predict(model):
+            for row in range(0,maxlines,100):
 
-            seed = train_x[row, 0:prefixlen]
-            generated = seed[:]
+                seed = train_x[row, 0:prefixlen]
+                generated = seed[:]
 
-            x = np.zeros((1, maxlen, len(vocab)))
-            for t, elem in enumerate(generated[-maxlen:]):
-                x[0, t, vocab_indices[elem]] = 1.
-            preds = model.predict(x,verbose=0)[0]
-            next_elem_idx = sample(preds, diversity)
-            next_elem = indices_vocab[next_elem_idx]
-            generated += next_elem
-
-        print(seed,'\t',generated[prefixlen:])
-        print()
-
-
-    for diversity in [0.2, 0.5, 1.0, 1.2]:
-        print()
-        print('----- diversity:', diversity)
-        for start_index in range(0, train_y.shape[0], 100):
-            seed = text[start_index : start_index + maxlen]
-            generated = seed[:]
-
-            for i in range(10):
                 x = np.zeros((1, maxlen, len(vocab)))
                 for t, elem in enumerate(generated[-maxlen:]):
                     x[0, t, vocab_indices[elem]] = 1.
+                preds = model.predict(x,verbose=0)[0]
+                next_elem_idx = sample(preds, diversity)
+                next_elem = indices_vocab[next_elem_idx]
+                generated += next_elem
 
-                preds = model.predict(x, verbose=0)[0]
-                next_index = sample(preds, diversity)  # arent we overwriting our ground truth? (L:D)
-                #next_index = np.argmax(preds)
-                generated += indices_vocab[next_index]
-
-            print(seed, '\t', generated[maxlen:])
+                print(seed,'\t',generated[prefixlen:])
             print()
+
+
+        for diversity in [0.2, 0.5, 1.0, 1.2]:
+            print()
+            print('----- diversity:', diversity)
+            for start_index in range(0, train_y.shape[0], 100):
+                seed = text[start_index : start_index + maxlen]
+                generated = seed[:]
+
+                for i in range(10):
+                    x = np.zeros((1, maxlen, len(vocab)))
+                    for t, elem in enumerate(generated[-maxlen:]):
+                        x[0, t, vocab_indices[elem]] = 1.
+
+                    preds = model.predict(x, verbose=0)[0]
+                    next_index = sample(preds, diversity)  # arent we overwriting our ground truth? (L:D)
+                    #next_index = np.argmax(preds)
+                    generated += indices_vocab[next_index]
+
+                print(seed, '\t', generated[maxlen:])
+                print()
