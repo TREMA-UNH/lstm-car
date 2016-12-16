@@ -1,0 +1,11 @@
+
+## Project setup
+
+- mkdir ./data
+- download data release into ./data
+- download glove.6B.50d.txt into ./data
+
+
+## Running
+
+from ./ run `python3 src/rnn.py`
