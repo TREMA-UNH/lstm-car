@@ -22,6 +22,3 @@ def get_test_seqs() -> List[TestSeq]:
 
         result.append(TestSeq(sequence=para[0:prefixlen], true=para[prefixlen], candidates=cands))
     return result
-
-
-

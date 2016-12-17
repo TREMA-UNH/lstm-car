@@ -1,7 +1,7 @@
 from data_preproc import *
-from lstm_models import *
-
-
+from lstm_models.word_vec import WordVecLSTMModel
+from lstm_models.character import CharacterLSTMModel
+from embeddings import BinnedEmbeddings
 
 training_seqs = get_training_seqs()
 lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40)
@@ -22,9 +22,3 @@ next_words = lstmWordvec.generate_word(input_seqs)
 predictions = list(zip(test_seqs, next_words))
 for pred, next in predictions[0: 20]:
     print(' '.join(pred.sequence), '\t====\t',next)
-
-
-         # generate_word(self, test_inputs: List[List[Word]])
-
-
-
