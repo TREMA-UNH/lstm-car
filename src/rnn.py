@@ -16,6 +16,8 @@ from utils import *
 
 maxlen = 40
 step = 3
+prefixlen = maxlen # prefixlen must be >= maxlen!
+
 
 embeddings = read_glove('data/glove.6B.50d.txt')
 # Word embedding dimension
@@ -35,19 +37,22 @@ print(set(w
 # Compute training samples
 train_x = []
 train_y = []
+test_seq = []
 for line in paras[:10000]:
     embedded = [ embeddings[elem]
                  for elem in line
                  if elem in embeddings ]
+    embedded = np.array(embedded)
     print(' '.join( elem if elem in embeddings else '<%s>' % elem
                     for elem in line ))
     for i in range(0, len(embedded) - maxlen - 1, step):
         train_x.append(embedded[i:i+maxlen])
-        train_y.append(embedded[i+maxlen+1])
+        train_y.append(embedded[i+maxlen])
+    if len(embedded) > prefixlen+2:
+        test_seq.append(embedded)
 
 train_x = np.array(train_x)
 train_y = np.array(train_y)
-print(train_x.shape, train_y.shape)
 
 # Construct model
 model = Sequential()
@@ -59,41 +64,34 @@ optimizer = RMSprop(lr=0.01)
 model.compile(optimizer=optimizer, loss='cosine_proximity')
 
 # Prune embeddings
-#seen_words = set(w for w in line for line in paras)
-#seen_embeddings = { w: v
+# seen_words = set(w for w in line for line in paras)
+# seen_embeddings = { w: v
 #                    for w,v in embeddings.items()
 #                    if w in seen_words }
-#seen_embeddings = embeddings
-#idx = BinnedEmbeddingIndex(seen_embeddings)
+# idx = BinnedEmbeddingIndex(seen_embeddings)
 
 idx = BinnedEmbeddingIndex(embeddings)
 
 print(idx.get(embeddings['the']))
 
 
-def resolve_none(elem):
-    if elem is None:
-        return ''
-    else:
-        return elem
-
 def wordvecs_to_text(generated):
     return " ".join(idx.get(elem) for elem in generated)
 
 
-maxlines=len(train_y)
-prefixlen = maxlen
+monitor=[]
+
+maxlines=len(test_seq) -1
 def ld_test_predict(model):
-    for row in range(1,maxlines-1,100):
-        seed = train_x[row,0:prefixlen]
+    for row in range(1,maxlines-1,10):
+        seed = test_seq[row][0:prefixlen]
         generated = list(seed[:])
 
         x = np.zeros((1,maxlen,dim))
         for t, elem in enumerate(generated[-maxlen:]):
-            x[0, t, :] = elem # embeddings[elem]
+            x[0, t, :] = elem
         preds = model.predict(x,verbose=0)[0]
         next_elem_vec = preds
-        #next_elem = idx.get(next_elem_vec)
         generated.append(next_elem_vec)
 
         print("output: ", wordvecs_to_text(seed),'\t ====== \t',wordvecs_to_text(generated[prefixlen:]) )
@@ -101,35 +99,41 @@ def ld_test_predict(model):
 
 
 def ld_test_score(model):
-    for row in range(1,maxlines-1,100):
-        seed = train_x[row,0:prefixlen/2]
-        candidate1 = train_x[row-1,prefixlen/2+1:]
-        candidate2 = train_x[row,prefixlen/2+1:]
-        candidate3 = train_x[row+1,prefixlen/2+1:]
+    count_correct = 0
+    count_all = 0
+    for row in range(1,maxlines-1,10):
+        seed = test_seq[row][0:prefixlen]
+        print(seed.__class__)
+        candidate1 = test_seq[row-1][prefixlen+1:prefixlen+2]
+        candidate2 = test_seq[row][  prefixlen+1:prefixlen+2]
+        candidate3 = test_seq[row+1][prefixlen+1:prefixlen+2]
 
-        cands = [candidate1, candidate2, candidate3]
 
-        x = np.zeros((1,20,dim))
-        x[0]=seed
-        y1 = np.zeros((1,19,dim))
-        y1[0]=candidate1
-        y2 = np.zeros((1,19,dim))
-        y2[0]=candidate2
-        y3 = np.zeros((1,19,dim))
-        y3[0]=candidate3
+        x = np.zeros((1,maxlen,dim))
+        x[:,:,:]=seed
+        y1 = np.zeros((1,dim))
+        y1[:,:] = candidate1
+        y2 = np.zeros((1,dim))
+        y2[:,:] = candidate2
+        y3 = np.zeros((1,dim))
+        y3[:,:] = candidate3
 
         cands = [y1,y2,y3]
 
         scored_items = [(cand, model.evaluate(x,cand))  for cand in cands]
-        ranking = sorted(scored_items, key=lambda k,v: -v)
+        ranking = sorted(scored_items, key=lambda x: -x[1])
 
 
         for cand, score in ranking:
-            print("score: ", wordvecs_to_text(seed), '\t=========\t', wordvecs_to_text(cand[0]), score)
-        is_correct = ranking[0][0] == candidate2
+            print("score: ", wordvecs_to_text(seed), '\t=========\t', wordvecs_to_text(cand), score)
+        is_correct = np.alltrue(ranking[0][0] == candidate2)
         print('correct? ',is_correct)
+        if is_correct:
+            count_correct += 1
+        count_all += 1
 
-
+    monitor.append(count_correct/count_all)
+    print('monitor=',monitor)
 
 
 
@@ -152,9 +156,10 @@ def ld_test_score(model):
 #     for x,y in list(zip(train_x, model.predict(train_x)))[::100]:
 #         print(' '.join(str(idx.get(w)) for w in x[-5:]),'\t', str(idx.get(y)))
 
+
 for iteration in range(1, 60):
     print('fitting')
-    model.fit(train_x, train_y, nb_epoch=1, validation_split=0.5)
+    model.fit(train_x, train_y, nb_epoch=20, validation_split=0.5)
     ld_test_predict(model)
     ld_test_score(model)
     print('\n\n')
