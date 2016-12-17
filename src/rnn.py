@@ -70,13 +70,13 @@ model.compile(optimizer=optimizer, loss='cosine_proximity')
 #                    if w in seen_words }
 # idx = BinnedEmbeddingIndex(seen_embeddings)
 
-idx = BinnedEmbeddingIndex(embeddings)
+idx = BinnedEmbeddings(embeddings)
 
-print(idx.get(embeddings['the']))
+print(idx.lookup(embeddings['the']))
 
 
 def wordvecs_to_text(generated):
-    return " ".join(idx.get(elem) for elem in generated)
+    return " ".join(idx.lookup(elem) for elem in generated)
 
 
 monitor=[]
@@ -121,7 +121,7 @@ def ld_test_score(model):
         cands = [y1,y2,y3]
 
         scored_items = [(cand, model.evaluate(x,cand))  for cand in cands]
-        ranking = sorted(scored_items, key=lambda x: -x[1])
+        ranking = sorted(scored_items, key=lambda x: x[1])
 
 
         for cand, score in ranking:
@@ -174,3 +174,4 @@ for iteration in range(1, 60):
 with open('model.json', 'w') as f:
     f.write(model.to_json())
 model.save_weights('weights.hdf')
+
