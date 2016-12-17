@@ -96,6 +96,13 @@ class BinnedEmbeddings(Embeddings):
                 sim = tmp
         return word
 
+stopwords = set(nltk.corpus.stopwords.words('english'))
+
+def is_good_token(token: Word) -> bool:
+    x = ''.join(list(filter(lambda c: str.isalpha(c), token)))
+    if len(x) <= 2: return False
+    if x in stopwords: return False
+    return True
 
 def read_paras() -> List[List[Word]]:
     """ Read text of TREC-CAR paragraphs """
@@ -107,7 +114,8 @@ def read_paras() -> List[List[Word]]:
                 text += body.text
             elif isinstance(body, read_data.ParaLink):
                 text += body.anchor_text
-        paras.append(nltk.tokenize.word_tokenize(text.lower()))
+        words = nltk.tokenize.word_tokenize(text.lower())
+        paras.append(list(filter(is_good_token, words)))
     return paras
 
 
