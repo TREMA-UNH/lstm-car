@@ -57,8 +57,8 @@ class WordVecLSTMModel(ParaCompletionModel):
                          for elem in line
                          if elem in self.embeddingIndex ]
             wordvec_line = np.array(wordvec_line)  # type: np.ndarray
-            print(' '.join( elem if elem in self.embeddingIndex else '<%s>' % elem
-                            for elem in line ))
+            # print(' '.join( elem if elem in self.embeddingIndex else '<%s>' % elem
+            #                 for elem in line ))
 
             # create training prefix-suffix pairs by shifting a window through the sequence
             for i in range(0, len(wordvec_line) - self.maxlen - 1, step):
@@ -73,7 +73,6 @@ class WordVecLSTMModel(ParaCompletionModel):
 
     def train(self, training_seqs: List[List[Word]]):
         (train_x, train_y) = self._preproc_train(training_seqs, step=3)
-        print(np.any(np.isnan(train_x)), np.any(np.isnan(train_y)))
         self.model.fit(train_x, train_y, nb_epoch=1, validation_split=0.5)
 
     def generate_word(self, test_inputs: List[List[Word]]) -> List[Word]:
