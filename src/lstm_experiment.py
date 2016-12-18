@@ -3,13 +3,18 @@ from lstm_models.word_vec import WordVecLSTMModel
 from lstm_models.character import CharacterLSTMModel
 from embeddings import BinnedEmbeddings
 from evaluation import *
+import argparse
 
-training_seqs = get_training_seqs()
+parser = argparse.ArgumentParser()
+parser.add_argument('-p', '--paragraphs', required=False, default='data/release.paragraphs')
+args = parser.parse_args()
+
+training_seqs = get_training_seqs(open(args.paragraphs, 'rb'))
 lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40)
 
 lstmWordvec.train(training_seqs)
 
-test_seqs = get_test_seqs()
+test_seqs = get_test_seqs(open(args.paragraphs, 'rb'))
 
 rankings = lstmWordvec.rank_word(test_seqs)
 

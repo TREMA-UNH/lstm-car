@@ -29,10 +29,10 @@ def is_good_token(token: Word) -> bool:
     if x in stopwords: return False
     return True
 
-def read_paras() -> List[List[Word]]:
+def read_paras(f) -> List[List[Word]]:
     """ Read text of TREC-CAR paragraphs """
     paras = []
-    for para in read_data.iter_paragraphs(open('data/release.paragraphs', 'rb')):
+    for para in read_data.iter_paragraphs(f):
         text = ''
         for body in para.bodies:
             if isinstance(body, read_data.ParaText):
