@@ -66,18 +66,26 @@ class CharacterLSTMModel(ParaCompletionModel):
                        nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
     def generate_word(self, test_inputs: List[List[Word]]) -> List[Word]:
-        x_list = [[list(self.onehot(c)) for c in (' '.join(input + [''])) if c in self.dict] for input in test_inputs]
-        test_x = np.array([seq[-self.maxlen:] for seq in x_list], dtype=float)
+        x_list = [[list(self.onehot(c))
+                   for c in (' '.join(input + ['']))
+                   if c in self.dict]
+                  for input in test_inputs]
+        test_x = np.array([seq[-self.maxlen:]
+                           for seq in x_list],
+                          dtype=float)
 
         print('test_x.shape= ',test_x.shape)
 
-        for i in range(0,20):
+        for i in range(0, 20):
             preds = self.model.predict(test_x)
-            test_x = np.hstack([test_x[:,-(self.maxlen-1):], preds[:,np.newaxis,:]])
+            test_x = np.hstack([test_x[:,-(self.maxlen-1):,:], preds[:,np.newaxis,:]])
 
-        pred_words = [([self.decode(pred_vec) for pred_vec in test_x[row,(self.maxlen-20):]])  for row in range(0,test_x.shape[0]) ]
+        pred_words = [([self.decode(pred_vec)
+                        for pred_vec in test_x[row,(self.maxlen-20):]])
+                      for row in range(0, test_x.shape[0]) ]
 
-        pred_words_cut = [''.join(itertools.takewhile(lambda c: c is not ' ', line)) for line in pred_words]
+        pred_words_cut = [''.join(itertools.takewhile(lambda c: c is not ' ', line))
+                          for line in pred_words]
         return pred_words_cut
 
 
