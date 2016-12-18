@@ -9,5 +9,5 @@ class ParaCompletionModel:
 
     def rank_word(self,
                   test_seqs: List[TestSeq]) \
-            -> List[Tuple[List[Tuple[Word, float]], Word]]:
+            -> List[RankingWithTruth]:
         raise NotImplementedError

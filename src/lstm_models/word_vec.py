@@ -81,6 +81,6 @@ class WordVecLSTMModel(ParaCompletionModel):
             scored_items = [(cand_word, self.model.evaluate(test_x, np.array([cand_wordvec]), verbose=False))
                             for cand_word, cand_wordvec in test_cands]
             ranking = sorted(scored_items, key=lambda x:x[1])
-            return (ranking, seq.true)
+            return (ranking, seq.truth)
 
         return list(map(score, test_seqs))

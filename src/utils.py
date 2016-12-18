@@ -1,6 +1,6 @@
 import collections
 
-from typing import Dict, Tuple, List, Set
+from typing import Dict, Tuple, List, Set, TypeVar
 import typing
 
 import nltk.tokenize
@@ -14,8 +14,12 @@ Char = str
 
 
 TestSeq = typing.NamedTuple('TestSeq', [('sequence', List[Word]),
-                                        ('true', Word),
+                                        ('truth', Word),
                                         ('candidates', Set[Word])])
+
+
+Ranking = List[Tuple[Word, float]]
+RankingWithTruth = Tuple[Ranking, Word]
 
 stopwords = set(nltk.corpus.stopwords.words('english'))
 
