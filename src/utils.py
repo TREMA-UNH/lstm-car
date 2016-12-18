@@ -42,7 +42,5 @@ def read_paras(f) -> Iterator[List[Word]]:
         words = nltk.tokenize.word_tokenize(text.lower())
         yield list(filter(is_good_token, words))
 
-
-
 def download_nlk_resources():
     nltk.download()
