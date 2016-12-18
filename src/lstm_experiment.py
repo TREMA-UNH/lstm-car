@@ -14,18 +14,22 @@ args = parser.parse_args()
 
 training_seqs = get_training_seqs(open(args.paragraphs, 'rb'), lines=args.lines)
 lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40, args.epochs)
+lstmChar = CharacterLSTMModel(40, args.epochs)
 
 lstmWordvec.train(training_seqs)
+lstmChar.train(training_seqs)
 
 test_seqs = get_test_seqs(open(args.paragraphs, 'rb'), args.lines)
 
 rankings = lstmWordvec.rank_word(test_seqs)
+# rankings = lstmChar.rank_word(test_seqs)
 
-for ranking in rankings[0:10]:
-    print(ranking)
+# for ranking in rankings[0:10]:
+#     print(ranking)
 
 input_seqs = [seq.sequence for seq in test_seqs]
 next_words = lstmWordvec.generate_word(input_seqs)
+# next_words = lstmChar.generate_word(input_seqs)
 
 predictions = list(zip(test_seqs, next_words))
 for pred, next in predictions[0:10]:
@@ -39,7 +43,3 @@ print("P@1 of rankings: ", prec1_score)
 
 prec1_gen = prec1Pred(next_words, [seq.truth for seq in test_seqs])
 print("P@1 of generations: ", prec1_gen)
-
-
-
-
