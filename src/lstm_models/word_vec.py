@@ -30,6 +30,9 @@ class WordVecLSTMModel(ParaCompletionModel):
         model.compile(optimizer=optimizer, loss='cosine_proximity')
         self.model = model
 
+    def load_weights(self, fname: str):
+        self.model.load_weights(fname)
+
     def _preproc_train(self, training_seqs: List[List[Word]], step: int):
         train_x = []
         train_y = []

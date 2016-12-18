@@ -3,7 +3,7 @@ from utils import *
 
 prefixlen = 40 # prefixlen must be >= maxlen!
 
-def get_training_seqs(f, lines:int) -> List[List[Word]]:
+def get_training_seqs(f: typing.io.BinaryIO, lines: int) -> List[List[Word]]:
     'Returns list of sequences of words for training'
     if lines<0:
         return read_paras(f)
@@ -11,8 +11,7 @@ def get_training_seqs(f, lines:int) -> List[List[Word]]:
         return list(itertools.islice(read_paras(f), 0, lines))
 
 
-
-def get_test_seqs(f, lines:int) -> List[TestSeq]:
+def get_test_seqs(f: typing.io.BinaryIO, lines:int) -> List[TestSeq]:
     'Returns a list of ( sequences of words, next word )'
     paras = [para for para in read_paras(f) if len(para)>prefixlen + 1]
 

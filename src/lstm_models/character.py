@@ -12,8 +12,6 @@ from lstm_models import ParaCompletionModel
 class CharacterLSTMModel(ParaCompletionModel):
     'LSTM Model with characters  as inputs/outputs'
 
-
-
     def __init__(self, maxlen: int, epochs:int):
         self.epochs = epochs
         self.maxlen = maxlen
@@ -29,6 +27,9 @@ class CharacterLSTMModel(ParaCompletionModel):
         optimizer = RMSprop(lr=0.01)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer)
         self.model = model
+
+    def load_weights(self, fname: str):
+        self.model.load_weights(fname)
 
     def onehot(self, c):
         arr = np.zeros(len(self.vocab))
