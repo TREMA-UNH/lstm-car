@@ -4,7 +4,7 @@
 - mkdir ./data
 - download data release into ./data
 - download glove.6B.50d.txt into ./data
-
+- Run nltk_download.py to install nltk resources
 
 ## Running
 
