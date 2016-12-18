@@ -5,6 +5,8 @@
 - download data release into ./data
 - download glove.6B.50d.txt into ./data
 - Run nltk_download.py to install nltk resources
+- install keras dependency (e.g. conda install keras) - this one should come with tensorflow and theano
+- find the keras config file ~/.keras/keras.json and change backend to "theano"
 
 ## Running
 

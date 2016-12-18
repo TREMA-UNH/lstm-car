@@ -8,15 +8,16 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', '--paragraphs', required=False, default='data/release.paragraphs')
 parser.add_argument('-e', '--epochs', required=False, default=1, type=int)
+parser.add_argument('-l','--lines', required=False, default=-1, type=int)
 args = parser.parse_args()
 
 
-training_seqs = get_training_seqs(open(args.paragraphs, 'rb'))
+training_seqs = get_training_seqs(open(args.paragraphs, 'rb'), lines=args.lines)
 lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40, args.epochs)
 
 lstmWordvec.train(training_seqs)
 
-test_seqs = get_test_seqs(open(args.paragraphs, 'rb'))
+test_seqs = get_test_seqs(open(args.paragraphs, 'rb'), args.lines)
 
 rankings = lstmWordvec.rank_word(test_seqs)
 
