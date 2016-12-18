@@ -1,6 +1,6 @@
 import collections
 
-from typing import Dict, Tuple, List, Set, TypeVar
+from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generator
 import typing
 
 import nltk.tokenize
@@ -29,9 +29,9 @@ def is_good_token(token: Word) -> bool:
     if x in stopwords: return False
     return True
 
-def read_paras(f) -> List[List[Word]]:
+def read_paras(f) -> Iterator[List[Word]]:
     """ Read text of TREC-CAR paragraphs """
-    paras = []
+
     for para in read_data.iter_paragraphs(f):
         text = ''
         for body in para.bodies:
@@ -40,8 +40,8 @@ def read_paras(f) -> List[List[Word]]:
             elif isinstance(body, read_data.ParaLink):
                 text += body.anchor_text
         words = nltk.tokenize.word_tokenize(text.lower())
-        paras.append(list(filter(is_good_token, words)))
-    return paras
+        yield list(filter(is_good_token, words))
+
 
 
 def download_nlk_resources():
