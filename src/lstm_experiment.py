@@ -7,10 +7,12 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', '--paragraphs', required=False, default='data/release.paragraphs')
+parser.add_argument('-e', '--epochs', required=False, default=1, type=int)
 args = parser.parse_args()
 
+
 training_seqs = get_training_seqs(open(args.paragraphs, 'rb'))
-lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40)
+lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40, args.epochs)
 
 lstmWordvec.train(training_seqs)
 

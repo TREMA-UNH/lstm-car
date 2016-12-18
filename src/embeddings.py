@@ -10,7 +10,7 @@ class Embeddings(object):
         if word in self._embeddings:
             return self._embeddings.get(word)
         else :
-            return np.ones(50, dtype=float)
+            return np.ones(self.dim(), dtype=float)
             # todo fix this
 
     def lookup(self, vec: WordVector):

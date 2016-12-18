@@ -13,7 +13,8 @@ class WordVecLSTMModel(ParaCompletionModel):
         return " ".join(self.embeddingIndex.lookup(elem) for elem in wv_seq)
 
 
-    def __init__(self, embeddingIndex: Embeddings, maxlen: int):
+    def __init__(self, embeddingIndex: Embeddings, maxlen: int, epochs:int):
+        self.epochs = epochs
         self.embeddingIndex = embeddingIndex
 
         self.dim = embeddingIndex.dim()
@@ -52,7 +53,7 @@ class WordVecLSTMModel(ParaCompletionModel):
 
     def train(self, training_seqs: List[List[Word]]):
         (train_x, train_y) = self._preproc_train(training_seqs, step=3)
-        self.model.fit(train_x, train_y, nb_epoch=1, validation_split=0.5)
+        self.model.fit(train_x, train_y, nb_epoch=self.epochs, validation_split=0.2)
 
     def generate_word(self, test_inputs: List[List[Word]]) -> List[Word]:
         test_x = np.array([[self.embeddingIndex.get(elem)
