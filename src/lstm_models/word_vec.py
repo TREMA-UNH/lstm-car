@@ -2,6 +2,7 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.layers import Activation, Dense
 from keras.layers.recurrent import LSTM
+from keras.callbacks import ModelCheckpoint
 
 from embeddings import *
 from lstm_models import ParaCompletionModel
@@ -53,7 +54,9 @@ class WordVecLSTMModel(ParaCompletionModel):
 
     def train(self, training_seqs: List[List[Word]]):
         (train_x, train_y) = self._preproc_train(training_seqs, step=3)
-        self.model.fit(train_x, train_y, nb_epoch=self.epochs, validation_split=0.2)
+        callbacks = [ModelCheckpoint('weights.hdf')]
+        self.model.fit(train_x, train_y,
+                       nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
     def generate_word(self, test_inputs: List[List[Word]]) -> List[Word]:
         test_x = np.array([[self.embeddingIndex.get(elem)
