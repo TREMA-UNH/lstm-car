@@ -12,7 +12,8 @@ from lstm_models import ParaCompletionModel
 class CharacterLSTMModel(ParaCompletionModel):
     'LSTM Model with characters  as inputs/outputs'
 
-    def __init__(self, maxlen: int, epochs:int):
+    def __init__(self, maxlen: int, epochs: int):
+        super().__init__()
         self.epochs = epochs
         self.maxlen = maxlen
         self.vocab = ' abcdefghijklmnopqrstuvwxyz'
