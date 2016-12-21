@@ -1,3 +1,5 @@
+from typing import Iterable
+
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.layers import Activation, Dense
@@ -19,6 +21,7 @@ class WordVecLSTMModel(ParaCompletionModel):
         self.embeddingIndex = embeddingIndex
 
         self.dim = embeddingIndex.dim()
+        self.ONES = np.ones(self.dim)
         self.maxlen = maxlen
 
         # Construct model
@@ -33,14 +36,19 @@ class WordVecLSTMModel(ParaCompletionModel):
     def load_weights(self, fname: str):
         self.model.load_weights(fname)
 
-    def _preproc_train(self, training_seqs: List[List[Word]], step: int):
+    def create_vector_seq(self, line:Iterable[Word]):
+        wordvec_line = [ self.embeddingIndex.get(elem)
+                         for elem in line
+                         if elem in self.embeddingIndex ]
+        wordvec_line = np.array(wordvec_line)  # type: np.ndarray
+        return wordvec_line
+
+
+    def _preproc_train(self, training_seqs: Iterable[List[Word]], step: int):
         train_x = []
         train_y = []
         for line in training_seqs:
-            wordvec_line = [ self.embeddingIndex.get(elem)
-                             for elem in line
-                             if elem in self.embeddingIndex ]
-            wordvec_line = np.array(wordvec_line)  # type: np.ndarray
+            wordvec_line = self.create_vector_seq(line)
             # print(' '.join( elem if elem in self.embeddingIndex else '<%s>' % elem
             #                 for elem in line ))
 
@@ -54,6 +62,40 @@ class WordVecLSTMModel(ParaCompletionModel):
         train_y = np.array(train_y)
         return (train_x, train_y)
 
+    def unknown_wordvec(self):
+        return self.ONES
+
+    def _preproc_train_qa(self, training_pairs: Iterable[Tuple[List[Word],List[Word]]], step: int):
+        train_x = []
+        train_y = []
+        for query,answer  in training_pairs:
+            wordvec_query = self.create_vector_seq(query)
+            wordvec_answer = self.create_vector_seq(answer)
+            # print(' '.join( elem if elem in self.embeddingIndex else '<%s>' % elem
+            #                 for elem in line ))
+
+            if len(wordvec_query)>=self.maxlen :
+                wordvec_line = np.hstack([wordvec_query[-self.maxlen:], wordvec_answer])
+
+            else:
+                zero_entries = self.maxlen - len(wordvec_query)
+                wordvec_line = np.hstack([self.unknown_wordvec()]*zero_entries + [wordvec_query, wordvec_answer])
+
+            # create training prefix-suffix pairs by shifting a window through the sequence
+            for i in range(0, len(wordvec_line) - self.maxlen - 1, step):
+                train_x.append(wordvec_line[i:i+self.maxlen])
+                train_y.append(wordvec_line[i+self.maxlen])
+
+        train_x = np.array(train_x)
+        train_y = np.array(train_y)
+        return (train_x, train_y)
+
+
+    def train_qa(self, training_pairs: List[Tuple[List[Word],List[Word]]]):
+        (train_x, train_y) = self._preproc_train_qa(training_pairs, step=3)
+        callbacks = [ModelCheckpoint('weights.hdf')]
+        self.model.fit(train_x, train_y,
+                       nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
     def train(self, training_seqs: List[List[Word]]):
         (train_x, train_y) = self._preproc_train(training_seqs, step=3)

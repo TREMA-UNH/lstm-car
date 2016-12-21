@@ -24,3 +24,17 @@ def get_test_seqs(f: typing.io.BinaryIO, lines:int) -> List[TestSeq]:
 
         result.append(TestSeq(sequence=para[0:prefixlen], truth=para[prefixlen], candidates=cands))
     return result
+
+
+def read_paras(f) -> Iterator[List[Word]]:
+    """ Read text of TREC-CAR paragraphs """
+
+    for para in read_data.iter_paragraphs(f):
+        text = ''
+        for body in para.bodies:
+            if isinstance(body, read_data.ParaText):
+                text += body.text
+            elif isinstance(body, read_data.ParaLink):
+                text += body.anchor_text
+        words = nltk.tokenize.word_tokenize(text.lower())
+        yield list(filter(is_good_token, words))

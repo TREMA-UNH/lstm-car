@@ -1,4 +1,6 @@
 import itertools
+from typing import Iterable
+
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.layers import Activation, Dense
@@ -18,6 +20,7 @@ class CharacterLSTMModel(ParaCompletionModel):
         self.maxlen = maxlen
         self.vocab = ' abcdefghijklmnopqrstuvwxyz'
         self.dict = {v:i for i,v in enumerate(self.vocab)}
+        self.ONES = np.ones(len(self.vocab))
 
         # Construct model
         model = Sequential()
@@ -41,12 +44,19 @@ class CharacterLSTMModel(ParaCompletionModel):
         pred_char_idx = np.argmax(vec)
         return self.vocab[pred_char_idx]
 
-    def _preproc_train(self, training_seqs: List[List[Word]], step: int):
+    def unknown_wordvec(self):
+        return self.ONES
+
+    def create_seq_vector(self, char_query:List[Word]):
+        char_query = [self.onehot(c) for c in ' '.join(char_query) if c in self.dict]
+        char_query = np.array(char_query)  # type: np.ndarray
+        return char_query
+
+    def _preproc_train(self, training_seqs: Iterable[List[Word]], step: int):
         train_x = []
         train_y = []
         for line in training_seqs:
-            char_line = [self.onehot(c) for c in ' '.join(line) if c in self.dict]
-            char_line = np.array(char_line)  # type: np.ndarray
+            char_line = self.create_seq_vector(line)
 
             # create training prefix-suffix pairs by shifting a window through the sequence
             for i in range(0, len(char_line) - self.maxlen - 1, step):
@@ -59,6 +69,37 @@ class CharacterLSTMModel(ParaCompletionModel):
         return (train_x, train_y)
 
 
+    def _preproc_train_qa(self, training_pairs: Iterable[Tuple[List[Word],List[Word]]], step: int):
+        train_x = []
+        train_y = []
+        for query,answer in training_pairs:
+            char_query = self.create_seq_vector(query)
+            char_answer = self.create_seq_vector(answer)
+
+
+            if len(char_query)>=self.maxlen :
+                char_line = np.hstack([char_query[-self.maxlen:], char_answer])
+            else:
+                zero_entries = self.maxlen - len(char_query)
+                char_line = np.hstack([self.unknown_wordvec()]*zero_entries + [char_query, char_answer])
+
+                # create training prefix-suffix pairs by shifting a window through the sequence
+            for i in range(0, len(char_line) - self.maxlen - 1, step):
+                train_x.append(char_line[i:i+self.maxlen])
+                train_y.append(char_line[i+self.maxlen])
+
+        train_x = np.array(train_x)
+        train_y = np.array(train_y)
+        return (train_x, train_y)
+
+    def train_qa(self, training_pairs: List[Tuple[List[Word],List[Word]]]):
+        (train_x, train_y) = self._preproc_train_qa(training_pairs, step=3)
+        with open('model.yaml', 'w') as f: f.write(self.model.to_yaml())
+        callbacks = [ModelCheckpoint('weights.hdf')]
+        self.model.fit(train_x, train_y,
+                       nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
+
+
     def train(self, training_seqs: List[List[Word]]):
         (train_x, train_y) = self._preproc_train(training_seqs, step=3)
         with open('model.yaml', 'w') as f: f.write(self.model.to_yaml())
@@ -66,7 +107,7 @@ class CharacterLSTMModel(ParaCompletionModel):
         self.model.fit(train_x, train_y,
                        nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
-    def generate_word(self, test_inputs: List[List[Word]]) -> List[Word]:
+    def generate_word(self, test_inputs: Iterable[List[Word]]) -> List[Word]:
         x_list = [[list(self.onehot(c))
                    for c in (' '.join(input + ['']))
                    if c in self.dict]
