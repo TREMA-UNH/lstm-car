@@ -78,10 +78,11 @@ class CharacterLSTMModel(ParaCompletionModel):
 
 
             if len(char_query)>=self.maxlen :
-                char_line = np.hstack([char_query[-self.maxlen:], char_answer])
+                char_line = np.vstack([char_query[-self.maxlen:], char_answer])
             else:
                 zero_entries = self.maxlen - len(char_query)
-                char_line = np.hstack([self.unknown_wordvec()]*zero_entries + [char_query, char_answer])
+                padding = np.vstack([self.unknown_wordvec()]*zero_entries)
+                char_line = np.vstack([padding, char_query, char_answer])
 
                 # create training prefix-suffix pairs by shifting a window through the sequence
             for i in range(0, len(char_line) - self.maxlen - 1, step):

@@ -1,4 +1,4 @@
-from data_preproc import *
+from data_preproc_qa import *
 from lstm_models import ParaCompletionModel
 from lstm_models.word_vec import WordVecLSTMModel
 from lstm_models.character import CharacterLSTMModel
@@ -8,17 +8,18 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', '--paragraphs', required=False, default='data/release.paragraphs')
+parser.add_argument('-t', '--testparagraphs', required=False, default='data/release.paragraphs')
 parser.add_argument('-e', '--epochs', required=False, default=1, type=int)
 parser.add_argument('-l', '--lines', required=False, default=-1, type=int)
 args = parser.parse_args()
 
 
-training_seqs = get_training_seqs(open(args.paragraphs, 'rb'), lines=args.lines)
+training_seqs = get_training_seqs(open(args.paragraphs, 'r'), lines=args.lines)  # 'rb' for cbor, 'r' for csv
 lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40, args.epochs)
 lstmChar = CharacterLSTMModel(40, args.epochs)
 
-lstmWordvec.train(training_seqs)
-lstmChar.train(training_seqs)
+lstmWordvec.train_qa(training_seqs)
+# lstmChar.train_qa(training_seqs)
 
 
 def evaluate(model: ParaCompletionModel, test_seqs: List[TestSeq]):
@@ -42,6 +43,6 @@ def evaluate(model: ParaCompletionModel, test_seqs: List[TestSeq]):
     prec1_gen = prec1Pred(next_words, [seq.truth for seq in test_seqs])
     print("P@1 of generations: ", prec1_gen)
 
-test_seqs = get_test_seqs(open(args.paragraphs, 'rb'), args.lines)
+test_seqs = get_test_seqs(open(args.testparagraphs, 'r'), args.lines) # 'rb' for cbor, 'r' for csv
 evaluate(lstmWordvec, test_seqs)
-#evaluate(lstmChar, test_seqs)
+# evaluate(lstmChar, test_seqs)

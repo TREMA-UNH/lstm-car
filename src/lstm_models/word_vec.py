@@ -75,11 +75,11 @@ class WordVecLSTMModel(ParaCompletionModel):
             #                 for elem in line ))
 
             if len(wordvec_query)>=self.maxlen :
-                wordvec_line = np.hstack([wordvec_query[-self.maxlen:], wordvec_answer])
-
+                wordvec_line = np.vstack([wordvec_query[-self.maxlen:], wordvec_answer])
             else:
                 zero_entries = self.maxlen - len(wordvec_query)
-                wordvec_line = np.hstack([self.unknown_wordvec()]*zero_entries + [wordvec_query, wordvec_answer])
+                padding = np.vstack([self.unknown_wordvec()]*zero_entries)
+                wordvec_line = np.vstack( [padding, wordvec_query, wordvec_answer])
 
             # create training prefix-suffix pairs by shifting a window through the sequence
             for i in range(0, len(wordvec_line) - self.maxlen - 1, step):
@@ -104,10 +104,21 @@ class WordVecLSTMModel(ParaCompletionModel):
                        nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
     def generate_word(self, test_inputs: List[List[Word]]) -> List[Word]:
-        test_x = np.array([[self.embeddingIndex.get(elem)
+        test_x = [[self.embeddingIndex.get(elem)
                             for elem in input
                             if elem in self.embeddingIndex]
-                           for input in test_inputs])
+                           for input in test_inputs]
+        def transform_row(test_x_1:list):
+            if len(test_x_1) >= self.maxlen:
+                test_x_1 = np.ndarray(test_x_1[-self.maxlen:])
+            else:
+                zero_entries = self.maxlen - len(test_x_1)
+                padding = np.vstack([self.unknown_wordvec()]*zero_entries)
+                test_x_1 = np.vstack([padding, test_x_1])
+            return test_x_1
+
+        test_x = np.array(list(map(transform_row, test_x)))
+
         preds = self.model.predict(test_x)
         pred_words = [self.embeddingIndex.lookup(pred) for pred in preds]
         return pred_words
@@ -121,6 +132,14 @@ class WordVecLSTMModel(ParaCompletionModel):
             test_x_1 = np.array( [self.embeddingIndex.get(elem)
                                   for elem in seq.sequence
                                   if elem in self.embeddingIndex] )
+
+            if test_x_1.shape[0] >= self.maxlen:
+                test_x_1 = test_x_1[-self.maxlen:]
+            else:
+                zero_entries = self.maxlen - test_x_1.shape[0]
+                padding = np.vstack([self.unknown_wordvec()]*zero_entries)
+                test_x_1 = np.vstack([padding, test_x_1])
+
             test_x = np.array([test_x_1])
 
             test_cands = [(cand_word, self.embeddingIndex.get(cand_word))
@@ -133,3 +152,10 @@ class WordVecLSTMModel(ParaCompletionModel):
             return (ranking, seq.truth)
 
         return list(map(score, test_seqs))
+
+        # if len(wordvec_query)>=self.maxlen :
+        #     wordvec_line = np.vstack([wordvec_query[-self.maxlen:], wordvec_answer])
+        # else:
+        #     zero_entries = self.maxlen - len(wordvec_query)
+        #     padding = np.vstack([self.unknown_wordvec()]*zero_entries)
+        #     wordvec_line = np.vstack( [padding, wordvec_query, wordvec_answer])
