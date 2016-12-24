@@ -69,8 +69,6 @@ class WordVecLSTMModel(ParaCompletionModel):
         train_x = []
         train_y = []
         for query,answer  in training_pairs:
-            if len(query) == 0: continue
-            if len(answer) == 0: continue
             wordvec_query = self.create_vector_seq(query)
             wordvec_answer = self.create_vector_seq(answer)
             # print(' '.join( elem if elem in self.embeddingIndex else '<%s>' % elem

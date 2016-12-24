@@ -27,13 +27,17 @@ def get_test_seqs(f: typing.io.BinaryIO, lines:int) -> List[TestSeq]:
     return result
 
 
-def read_query_paras_with_negatives(f, lines:int) -> Iterator[Tuple[List[Word],List[Word], List[List[Word]]]]:
+def read_query_paras_with_negatives(f, lines:int) -> Iterator[Tuple[List[Word], List[Word], List[List[Word]]]]:
     """ Read text of TREC-CAR paragraphs """
 
     for row in itertools.islice(csv.reader(f,delimiter='\t'), 0, lines):
         page, sectionpath, text = row[0:3]
         negtexts = row[4:]
-        yield (filter_field(sectionpath), filter_field(text), map(filter_field, negtexts))
+        sectionpath = filter_field(sectionpath)
+        text = filter_field(text)
+        negtexts = map(filter_field, negtexts)
+        if sectionpath == '' or text == '': continue
+        yield (sectionpath, text, negtexts)
 
 def filter_field(text):
     text = nltk.tokenize.word_tokenize(text.lower())
@@ -46,4 +50,5 @@ def read_query_paras(f) -> Iterator[Tuple[List[Word],List[Word]]]:
         page, sectionpath, text = row
         query = filter_field(sectionpath.lower())
         text = filter_field(text.lower())
+        if query == '' or text == '': continue
         yield (query, text)
