@@ -44,7 +44,7 @@ class CharacterLSTMModel(ParaCompletionModel):
         pred_char_idx = np.argmax(vec)
         return self.vocab[pred_char_idx]
 
-    def unknown_wordvec(self):
+    def unknown_charvec(self):
         return self.ONES
 
     def create_seq_vector(self, char_query:List[Word]):
@@ -81,7 +81,7 @@ class CharacterLSTMModel(ParaCompletionModel):
                 char_line = np.vstack([char_query[-self.maxlen:], char_answer])
             else:
                 zero_entries = self.maxlen - len(char_query)
-                padding = np.vstack([self.unknown_wordvec()]*zero_entries)
+                padding = np.vstack([self.unknown_charvec()]*zero_entries)
                 char_line = np.vstack([padding, char_query, char_answer])
 
                 # create training prefix-suffix pairs by shifting a window through the sequence
@@ -109,15 +109,15 @@ class CharacterLSTMModel(ParaCompletionModel):
                        nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
     def generate_word(self, test_inputs: Iterable[List[Word]]) -> List[Word]:
-        x_list = [[list(self.onehot(c))
+        x_list = [[self.onehot(c)
                    for c in (' '.join(input + ['']))
                    if c in self.dict]
                   for input in test_inputs]
+        x_list = [ np.vstack([self.unknown_charvec()]*(self.maxlen - len(x)) + x)
+                   for x in x_list ]
         test_x = np.array([seq[-self.maxlen:]
                            for seq in x_list],
                           dtype=float)
-
-        print('test_x.shape= ',test_x.shape)
 
         for i in range(0, 20):
             preds = self.model.predict(test_x)
@@ -131,22 +131,39 @@ class CharacterLSTMModel(ParaCompletionModel):
                           for line in pred_words]
         return pred_words_cut
 
-
     def rank_word(self,
-                  test_seqs: List[TestSeq]) \
+                   test_seqs: List[TestSeq]) \
             -> List[Tuple[List[Tuple[Word,float]], Word]]:
-        raise NotImplementedError
-        # def score(seq: TestSeq) -> (List[Tuple[Word,float]], Word):
-        #     test_x_1 = np.array( [self.dict.get(elem)
-        #                           for elem in ' '.join(seq.sequence)] )
-        #     test_x = np.array([test_x_1])
-        #
-        #     test_cands = [(cand_char, self.dict.get(cand_char))
-        #                   for cand_char in ' '.join(seq.candidates)]
-        #
-        #     scored_items = [(cand_word, self.model.evaluate(test_x, np.array([cand_wordvec]), verbose=False))
-        #                     for cand_word, cand_wordvec in test_cands]
-        #     ranking = sorted(scored_items, key=lambda x:x[1])
-        #     return (ranking, seq.truth)
-        #
-        # return list(map(score, test_seqs))
+
+        def score(seq: TestSeq) -> (List[Tuple[Word,float]], Word):
+            test_x_1 = np.array( [self.onehot(c)
+                                  for word in seq.sequence
+                                  for c in word
+                                  if c in self.dict] )
+
+            if test_x_1.shape[0] >= self.maxlen:
+                test_x_1 = test_x_1[-self.maxlen:]
+            else:
+                zero_entries = self.maxlen - test_x_1.shape[0]
+                padding = np.vstack([self.unknown_charvec()]*zero_entries)
+                test_x_1 = np.vstack([padding, test_x_1])
+
+            test_x_1 = np.array(test_x_1)
+
+            test_cands = [(cand_word, self.create_seq_vector(cand_word))
+                          for cand_word in seq.candidates
+                          if any(c in self.dict for c in cand_word)]
+
+            def score_char_set(char_vecs: np.ndarray) -> float:
+                z = np.vstack([test_x_1, char_vecs])[np.newaxis,:,:]
+                return np.mean([self.model.evaluate(z[:,i:i+self.maxlen,:],
+                                                    z[:,i+self.maxlen,:],
+                                                    verbose=False)
+                                for i in range(char_vecs.shape[0])])
+
+            scored_items = [(cand_word, score_char_set(cand_charvecs))
+                            for cand_word, cand_charvecs in test_cands]
+            ranking = sorted(scored_items, key=lambda x: x[1])
+            return (ranking, seq.truth)
+
+        return list(map(score, test_seqs))
