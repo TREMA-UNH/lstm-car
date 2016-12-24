@@ -18,8 +18,10 @@ def get_test_seqs(f: typing.io.BinaryIO, lines:int) -> List[TestSeq]:
     # Todo change from next word to next seq of words
 
     result = []
-    for para in paras[0:lines]:
-        result.append(TestSeq(sequence=para[0], truth=para[1][0], candidates=[negtext[0] for negtext in para[2]]))
+    for seq, truth, negatives in paras[0:lines]:
+        result.append(TestSeq(sequence=seq,
+                              truth=truth[0],
+                              candidates=[truth[0]]+[negtext[0] for negtext in negatives]))
     # result = [TestSeq(sequence=para[0], truth=para[1][0], candidates=[negtext[0] for negtext in para[2]]) for para in
     #           paras[0:lines]]
     return result
