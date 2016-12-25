@@ -28,7 +28,7 @@ class CharacterLSTMModel(ParaCompletionModel):
         model.add(Dense(len(self.vocab)))
         model.add(Activation('softmax'))
 
-        optimizer = RMSprop(lr=0.01)
+        optimizer = RMSprop(lr=0.001)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer)
         self.model = model
 
