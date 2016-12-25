@@ -36,7 +36,7 @@ def read_query_paras_with_negatives(f, lines:int) -> Iterator[Tuple[List[Word], 
         sectionpath = filter_field(sectionpath)
         text = filter_field(text)
         negtexts = map(filter_field, negtexts)
-        if sectionpath == '' or text == '': continue
+        if len(sectionpath) == 0 or len(text) == 0: continue
         yield (sectionpath, text, negtexts)
 
 def filter_field(text):
@@ -44,11 +44,11 @@ def filter_field(text):
     return list(filter(is_good_token, text))
 
 
-def read_query_paras(f) -> Iterator[Tuple[List[Word],List[Word]]]:
+def read_query_paras(f) -> Iterator[Tuple[List[Word], List[Word]]]:
     """ Read text of TREC-CAR paragraphs """
     for row in csv.reader(f, delimiter='\t'):
         page, sectionpath, text = row
         query = filter_field(sectionpath.lower())
         text = filter_field(text.lower())
-        if query == '' or text == '': continue
+        if len(query) == 0 or len(text) == 0: continue
         yield (query, text)
