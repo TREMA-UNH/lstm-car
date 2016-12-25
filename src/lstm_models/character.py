@@ -5,7 +5,7 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.layers import Activation, Dense
 from keras.layers.recurrent import LSTM
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 
 from utils import *
@@ -84,7 +84,7 @@ class CharacterLSTMModel(ParaCompletionModel):
                 padding = np.vstack([self.unknown_charvec()]*zero_entries)
                 char_line = np.vstack([padding, char_query, char_answer])
 
-                # create training prefix-suffix pairs by shifting a window through the sequence
+            # create training prefix-suffix pairs by shifting a window through the sequence
             for i in range(0, len(char_line) - self.maxlen - 1, step):
                 train_x.append(char_line[i:i+self.maxlen])
                 train_y.append(char_line[i+self.maxlen])
@@ -96,7 +96,8 @@ class CharacterLSTMModel(ParaCompletionModel):
     def train_qa(self, training_pairs: List[Tuple[List[Word],List[Word]]]):
         (train_x, train_y) = self._preproc_train_qa(training_pairs, step=3)
         with open('model.yaml', 'w') as f: f.write(self.model.to_yaml())
-        callbacks = [ModelCheckpoint('weights.hdf')]
+        callbacks = [ModelCheckpoint('weights.hdf'),
+                     EarlyStopping(min_delta=1e-7, patience=2)]
         self.model.fit(train_x, train_y,
                        nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
@@ -104,7 +105,8 @@ class CharacterLSTMModel(ParaCompletionModel):
     def train(self, training_seqs: List[List[Word]]):
         (train_x, train_y) = self._preproc_train(training_seqs, step=3)
         with open('model.yaml', 'w') as f: f.write(self.model.to_yaml())
-        callbacks = [ModelCheckpoint('weights.hdf')]
+        callbacks = [ModelCheckpoint('weights.hdf'),
+                     EarlyStopping(min_delta=1e-7, patience=2)]
         self.model.fit(train_x, train_y,
                        nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
 
