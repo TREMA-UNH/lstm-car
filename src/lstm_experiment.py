@@ -11,11 +11,12 @@ parser.add_argument('-p', '--paragraphs', required=False, default='data/release.
 parser.add_argument('-t', '--testparagraphs', required=False, default='data/release.paragraphs')
 parser.add_argument('-e', '--epochs', required=False, default=1, type=int)
 parser.add_argument('-l', '--lines', required=False, default=-1, type=int)
+parser.add_argument('-E', '--embeddings', required=False, default='data/glove.6B.50d.txt', type=str)
 args = parser.parse_args()
 
 
 training_seqs = get_training_seqs(open(args.paragraphs, 'r'), lines=args.lines)  # 'rb' for cbor, 'r' for csv
-lstmWordvec = WordVecLSTMModel(BinnedEmbeddings('data/glove.6B.50d.txt'), 40, args.epochs)
+lstmWordvec = WordVecLSTMModel(BinnedEmbeddings(args.embeddings), 40, args.epochs)
 lstmChar = CharacterLSTMModel(40, args.epochs)
 
 lstmWordvec.train_qa(training_seqs)
