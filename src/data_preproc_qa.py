@@ -36,7 +36,7 @@ def read_query_paras_with_negatives(f, lines:int) -> Iterator[Tuple[List[Word], 
         sectionpath = filter_field(sectionpath)
         text = filter_field(text)
         negtexts = map(filter_field, negtexts)
-        if len(sectionpath) == 0 or len(text) == 0: continue
+        if len(sectionpath) == 0 or len(text) == 0 or len(negtexts) == 0: continue
         yield (sectionpath, text, negtexts)
 
 def filter_field(text):
