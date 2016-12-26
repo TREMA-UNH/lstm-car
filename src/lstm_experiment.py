@@ -1,4 +1,5 @@
 from data_preproc_qa import *
+import lstm_models
 from lstm_models import ParaCompletionModel
 from lstm_models.word_vec import WordVecLSTMModel
 from lstm_models.character import CharacterLSTMModel
@@ -7,21 +8,27 @@ from evaluation import *
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--paragraphs', required=False, default='data/release.paragraphs')
-parser.add_argument('-t', '--testparagraphs', required=False, default='data/release.paragraphs')
-parser.add_argument('-e', '--epochs', required=False, default=1, type=int)
-parser.add_argument('-l', '--lines', required=False, default=-1, type=int)
-parser.add_argument('-E', '--embeddings', required=False, default='data/glove.6B.50d.txt', type=str)
+sub = parser.add_subparsers()
+
+a = sub.add_parser('train')
+a.set_defaults(mode='train')
+a.add_argument('-m', '--model', type=str, action='append', default=[])
+a.add_argument('-E', '--embeddings', type=argparse.FileType('r'), required=False, default='data/glove.6B.50d.txt')
+a.add_argument('-p', '--paragraphs', type=argparse.FileType('r'), required=False, default='data/release.paragraphs')
+a.add_argument('-L', '--max-length', type=int, help='training sequence length', default=40)
+a.add_argument('-e', '--epochs', type=int, required=False, default=1)
+a.add_argument('-l', '--lines', type=int, required=False, default=-1)
+
+a = sub.add_parser('test')
+a.set_defaults(mode='test')
+a.add_argument('-p', '--paragraphs', type=argparse.FileType('r'), required=False, default='data/release.paragraphs')
+a.add_argument('-l', '--lines', type=int, required=False)
+a.add_argument('-m', '--model', type=str, required=True)
 args = parser.parse_args()
 
-
-training_seqs = get_training_seqs(open(args.paragraphs, 'r'), lines=args.lines)  # 'rb' for cbor, 'r' for csv
-lstmWordvec = WordVecLSTMModel(BinnedEmbeddings(args.embeddings), 40, args.epochs)
-lstmChar = CharacterLSTMModel(40, args.epochs)
-
-lstmWordvec.train_qa(training_seqs)
-lstmChar.train_qa(training_seqs)
-
+knownModels = { 'char': CharacterLSTMModel,
+                'wordvec': WordVecLSTMModel
+                }
 
 def evaluate(model: ParaCompletionModel, test_seqs: List[TestSeq], generate=True):
     rankings = model.rank_word(test_seqs)
@@ -42,9 +49,24 @@ def evaluate(model: ParaCompletionModel, test_seqs: List[TestSeq], generate=True
     print("P@1 of rankings: ", prec1_score)
     print("MRR of rankings: ", mrr_score)
 
+if args.mode == 'train':
+    models = []   # Type: List[ParaCompletionModel]
+    for m in set(args.model):
+        mm = knownModels.get(m)
+        if mm is CharacterLSTMModel:
+            models.append(CharacterLSTMModel(args.max_length))
+        elif mm is WordVecLSTMModel:
+            embeddings = BinnedEmbeddings(args.embeddings.name)
+            models.append(WordVecLSTMModel(embeddings, args.max_length))
+        else:
+            raise RuntimeError('Unknown model %s' % m)
 
-test_seqs = get_test_seqs(open(args.testparagraphs, 'r'), args.lines) # 'rb' for cbor, 'r' for csv
-print('word vector:')
-evaluate(lstmWordvec, test_seqs)
-print('per-character:')
-evaluate(lstmChar, test_seqs)
+    training_seqs = get_training_seqs(args.paragraphs, lines=args.lines)
+    for m in models:
+        m.train_qa(training_seqs, epochs=args.epochs)
+        m.save('%s.model' % m.name())
+
+elif args.mode == 'test':
+    test_seqs = get_test_seqs(args.paragraphs, args.lines)
+    m = lstm_models.load_model(args.model)
+    evaluate(m, test_seqs)

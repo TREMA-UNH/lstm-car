@@ -12,7 +12,7 @@ def get_training_seqs(f: typing.io.BinaryIO, lines: int) -> Iterator[Tuple[List[
         return list(itertools.islice(read_query_paras(f), 0, lines))
 
 
-def get_test_seqs(f: typing.io.BinaryIO, lines:int) -> List[TestSeq]:
+def get_test_seqs(f: typing.io.BinaryIO, lines: int) -> List[TestSeq]:
     'Returns a list of ( sequences of words, next word )'
     paras = [para for para in read_query_paras_with_negatives(f, lines)]
     # Todo change from next word to next seq of words
@@ -27,15 +27,18 @@ def get_test_seqs(f: typing.io.BinaryIO, lines:int) -> List[TestSeq]:
     return result
 
 
-def read_query_paras_with_negatives(f, lines:int) -> Iterator[Tuple[List[Word], List[Word], List[List[Word]]]]:
+def read_query_paras_with_negatives(f, lines: int = None) -> Iterator[Tuple[List[Word], List[Word], List[List[Word]]]]:
     """ Read text of TREC-CAR paragraphs """
 
-    for row in itertools.islice(csv.reader(f,delimiter='\t'), 0, lines):
+    rows = csv.reader(f, delimiter='\t')
+    if lines is not None:
+        rows = itertools.islice(rows, 0, lines)
+    for row in rows:
         page, sectionpath, text = row[0:3]
         negtexts = row[4:]
         sectionpath = filter_field(sectionpath)
         text = filter_field(text)
-        negtexts = map(filter_field, negtexts)
+        negtexts = list(map(filter_field, negtexts))
         if len(sectionpath) == 0 or len(text) == 0 or len(negtexts) == 0: continue
         yield (sectionpath, text, negtexts)
 

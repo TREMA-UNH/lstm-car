@@ -1,6 +1,7 @@
 import itertools
 from typing import Iterable
 
+import keras.models
 from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.layers import Activation, Dense
@@ -12,11 +13,10 @@ from utils import *
 from lstm_models import ParaCompletionModel
 
 class CharacterLSTMModel(ParaCompletionModel):
-    'LSTM Model with characters  as inputs/outputs'
+    'LSTM Model with characters as inputs/outputs'
 
-    def __init__(self, maxlen: int, epochs: int):
+    def __init__(self, maxlen: int):
         super().__init__()
-        self.epochs = epochs
         self.maxlen = maxlen
         self.vocab = ' abcdefghijklmnopqrstuvwxyz'
         self.dict = {v:i for i,v in enumerate(self.vocab)}
@@ -31,6 +31,27 @@ class CharacterLSTMModel(ParaCompletionModel):
         optimizer = RMSprop(lr=0.001)
         model.compile(loss='categorical_crossentropy', optimizer=optimizer)
         self.model = model
+        self.weights_path = None
+
+    def save(self, path):
+        import os.path
+        self.path = path
+        things = { 'maxlen': self.maxlen,
+                   'model': self.model.to_json() }
+        super().save(path, things)
+        self.weights_path = os.path.join(path, 'weights.hdf5')
+        self.model.save_weights(self.weights_path)
+
+    @staticmethod
+    def load(things, path):
+        import os.path
+        self = CharacterLSTMModel(things['maxlen'])
+        self.model = keras.models.model_from_json(things['model'])
+        self.model.load_weights(os.path.join(path, 'weights.hdf5'))
+        return self
+
+    def name(self) -> str:
+        return 'char-%d' % self.maxlen
 
     def load_weights(self, fname: str):
         self.model.load_weights(fname)
@@ -93,22 +114,24 @@ class CharacterLSTMModel(ParaCompletionModel):
         train_y = np.array(train_y)
         return (train_x, train_y)
 
-    def train_qa(self, training_pairs: List[Tuple[List[Word],List[Word]]]):
+    def train_qa(self, training_pairs: List[Tuple[List[Word],List[Word]]], epochs: int = 40):
         (train_x, train_y) = self._preproc_train_qa(training_pairs, step=3)
         with open('model.yaml', 'w') as f: f.write(self.model.to_yaml())
-        callbacks = [ModelCheckpoint('weights.hdf'),
-                     EarlyStopping(min_delta=1e-7, patience=2)]
+        callbacks = [EarlyStopping(min_delta=1e-5, patience=2)]
+        if self.weights_path is not None:
+            callbacks.append(ModelCheckpoint(self.weights_path))
         self.model.fit(train_x, train_y,
-                       nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
+                       nb_epoch=epochs, validation_split=0.2, callbacks=callbacks)
 
 
-    def train(self, training_seqs: List[List[Word]]):
+    def train(self, training_seqs: List[List[Word]], epochs: int = 40):
         (train_x, train_y) = self._preproc_train(training_seqs, step=3)
         with open('model.yaml', 'w') as f: f.write(self.model.to_yaml())
-        callbacks = [ModelCheckpoint('weights.hdf'),
-                     EarlyStopping(min_delta=1e-7, patience=2)]
+        callbacks = [EarlyStopping(min_delta=1e-5, patience=2)]
+        if self.weights_path is not None:
+            callbacks.append(ModelCheckpoint(self.weights_path))
         self.model.fit(train_x, train_y,
-                       nb_epoch=self.epochs, validation_split=0.2, callbacks=callbacks)
+                       nb_epoch=epochs, validation_split=0.2, callbacks=callbacks)
 
     def generate_word(self, test_inputs: Iterable[List[Word]]) -> List[Word]:
         x_list = [[self.onehot(c)

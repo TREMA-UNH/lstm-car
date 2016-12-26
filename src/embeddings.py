@@ -57,14 +57,14 @@ class BinnedEmbeddings(Embeddings):
     An efficient structure for looking up the word associated with a particular
     embedding vector
     """
-    def __init__(self, fname):
+    def __init__(self, fname: str):
         Embeddings.__init__(self, fname)
 
         print('preparing word index',)
         idx = collections.defaultdict(lambda: [])
         for k,v in self._embeddings.items():
             idx[tuple(x > 0 for x in v[:10])].append((k,v))
-        self.word_index = idx
+        self.word_index = dict(idx) # convert to a dict to allow pickling
         print('done')
 
     def lookup(self, vec:np.ndarray):
