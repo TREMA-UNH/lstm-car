@@ -28,10 +28,14 @@ class CharacterLSTMModel(ParaCompletionModel):
         model.add(Dense(len(self.vocab)))
         model.add(Activation('softmax'))
 
-        optimizer = RMSprop(lr=0.001)
-        model.compile(loss='categorical_crossentropy', optimizer=optimizer)
         self.model = model
+        self._compile_model()
         self.weights_path = None
+        return
+
+    def _compile_model(self):
+        optimizer = RMSprop(lr=0.001)
+        self.model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 
     def save(self, path):
         import os.path
@@ -47,6 +51,7 @@ class CharacterLSTMModel(ParaCompletionModel):
         import os.path
         self = CharacterLSTMModel(things['maxlen'])
         self.model = keras.models.model_from_json(things['model'])
+        self._compile_model()
         self.model.load_weights(os.path.join(path, 'weights.hdf5'))
         return self
 
@@ -69,9 +74,9 @@ class CharacterLSTMModel(ParaCompletionModel):
         return self.ONES
 
     def create_seq_vector(self, char_query:List[Word]):
-        char_query = [self.onehot(c) for c in ' '.join(char_query) if c in self.dict]
-        char_query = np.array(char_query)  # type: np.ndarray
-        return char_query
+        char_query2 = [self.onehot(c) for c in ' '.join(char_query) if c in self.dict]
+        char_query3 = np.array(char_query2)  # type: np.ndarray
+        return char_query3
 
     def _preproc_train(self, training_seqs: Iterable[List[Word]], step: int):
         train_x = []
@@ -114,7 +119,7 @@ class CharacterLSTMModel(ParaCompletionModel):
         train_y = np.array(train_y)
         return (train_x, train_y)
 
-    def train_qa(self, training_pairs: List[Tuple[List[Word],List[Word]]], epochs: int = 40):
+    def train_qa(self, training_pairs: List[Tuple[List[Word], List[Word]]], epochs: int = 40):
         (train_x, train_y) = self._preproc_train_qa(training_pairs, step=3)
         with open('model.yaml', 'w') as f: f.write(self.model.to_yaml())
         callbacks = [EarlyStopping(min_delta=1e-5, patience=2)]
@@ -122,6 +127,35 @@ class CharacterLSTMModel(ParaCompletionModel):
             callbacks.append(ModelCheckpoint(self.weights_path))
         self.model.fit(train_x, train_y,
                        nb_epoch=epochs, validation_split=0.2, callbacks=callbacks)
+
+    def test_qa(self, test_pairs: List[Tuple[QueryId, List[Word], List[Tuple[ParagraphId, List[Word]]]]]) \
+            -> List[Tuple[QueryId, List[Tuple[ParagraphId, float]]]]:
+        results = list() # List[query, List[paragraphId, score] ]
+        def score(x:np.ndarray, y:np.ndarray) -> float:
+            z = np.vstack([x,y])
+            xlen = x.shape[0]
+            if x.shape[0]<self.maxlen:
+                zero_entries = self.maxlen - x.shape[0]
+                padding = np.vstack([self.unknown_charvec()]*zero_entries)
+                xlen = zero_entries + x.shape[0]
+                z = np.vstack([padding,z])
+
+            return np.mean([self.model.evaluate(z[np.newaxis,i-self.maxlen:i,:],
+                                         z[np.newaxis,i,:],
+                                         verbose=False)
+                     for i in range(xlen+1, z.shape[0])])
+
+        for (query_id, query, candidates) in test_pairs:
+            x = self.create_seq_vector(query)
+            scored_items = list()
+            for paragraph_id, cand in candidates:
+                y = self.create_seq_vector(cand)
+                scored_items.append((paragraph_id, score(x,y)))
+            ranking = sorted(scored_items, key=lambda x: x[1], reverse=True)
+            results.append((query_id, ranking))
+
+        return results
+
 
 
     def train(self, training_seqs: List[List[Word]], epochs: int = 40):
@@ -160,7 +194,7 @@ class CharacterLSTMModel(ParaCompletionModel):
                    test_seqs: List[TestSeq]) \
             -> List[Tuple[List[Tuple[Word,float]], Word]]:
 
-        def score(seq: TestSeq) -> (List[Tuple[Word,float]], Word):
+        def score(seq: TestSeq) -> Tuple[List[Tuple[Word,float]], Word]:
             test_x_1 = np.array( [self.onehot(c)
                                   for word in seq.sequence
                                   for c in word
@@ -188,7 +222,7 @@ class CharacterLSTMModel(ParaCompletionModel):
 
             scored_items = [(cand_word, score_char_set(cand_charvecs))
                             for cand_word, cand_charvecs in test_cands]
-            ranking = sorted(scored_items, key=lambda x: x[1])
+            ranking = sorted(scored_items, key=lambda x: x[1], reverse=True)
             return (ranking, seq.truth)
 
         return list(map(score, test_seqs))

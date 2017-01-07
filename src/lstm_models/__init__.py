@@ -17,10 +17,14 @@ class ParaCompletionModel:
         things['type'] = self.__class__
         pickle.dump(things, open(os.path.join(path, 'type.pickle'), 'wb'))
 
-    def train(self, training_seqs: List[List[Word]]):
-        raise NotImplementedError
+    # def train(self, training_seqs: List[List[Word]]):
+    #     raise NotImplementedError
 
     def train_qa(self, training_pairs: List[Tuple[List[Word],List[Word]]]):
+        raise NotImplementedError
+
+    def test_qa(self, test_pairs: List[Tuple[QueryId, List[Word], List[Tuple[ParagraphId, List[Word]]]]]) \
+            -> List[Tuple[QueryId, List[Tuple[ParagraphId, float]]]]:
         raise NotImplementedError
 
     def generate_word(self, test_inputs: List[List[Word]]) -> List[Word]:

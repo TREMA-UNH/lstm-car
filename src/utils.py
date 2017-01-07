@@ -8,15 +8,24 @@ import numpy as np
 from trec_car import read_data
 
 
+QueryId = str
+ParagraphId = str
+
 Word = str
 Char = str
 
 
 
-TestSeq = typing.NamedTuple('TestSeq', [('sequence', List[Word]),
+TestSeqNextWord = typing.NamedTuple('TestSeqNextWord', [('sequence', List[Word]),
                                         ('truth', Word),
                                         ('candidates', Set[Word])])
 
+TestCandidate = typing.NamedTuple('TestCandidate', [('paragraph_id', ParagraphId),
+                                                    ('sequence', List[Word])])
+
+TestSeq = typing.NamedTuple('TestSeq',[('query_id', QueryId),
+                                          ('query', List[Word]),
+                                          ('candidates',List[TestCandidate])])
 
 Ranking = List[Tuple[Word, float]]
 RankingWithTruth = Tuple[Ranking, Word]
